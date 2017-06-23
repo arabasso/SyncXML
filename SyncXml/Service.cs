@@ -6,10 +6,12 @@ namespace SyncXml
     public partial class Service :
         ServiceBase
     {
+        private readonly SynchronizationFile _synchronizationFile;
         private readonly Thread _thread;
 
         public Service(SynchronizationFile synchronizationFile)
         {
+            _synchronizationFile = synchronizationFile;
             _thread = new Thread(synchronizationFile.Synchronize);
 
             InitializeComponent();
@@ -22,7 +24,9 @@ namespace SyncXml
 
         protected override void OnStop()
         {
-            _thread.Abort();
+            _synchronizationFile.Stop();
+
+            _thread.Interrupt();
         }
     }
 }

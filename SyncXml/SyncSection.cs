@@ -35,6 +35,8 @@ namespace SyncXml
     public class SynchronizationFile :
         ConfigurationElement
     {
+        private FileSystemWatcher _fileSystemWatcher;
+
         [ConfigurationProperty("name", IsRequired = true)]
         public string Name
         {
@@ -79,33 +81,44 @@ namespace SyncXml
 
         public void Synchronize()
         {
-            var watcher = new FileSystemWatcher
+            EventLog.WriteEntry($"SyncXml.{Name}", $"Synchronizing {Source} and {Destiny}", EventLogEntryType.Information);
+
+            try
+            {
+                if (Sync(Destiny, Source))
+                {
+                    Execute();
+                }
+            }
+
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry($"SyncXml.{Name}", ex.Message, EventLogEntryType.Error);
+            }
+
+            _fileSystemWatcher = new FileSystemWatcher
             {
                 Path = Path.GetDirectoryName(Source),
-                Filter = Path.GetFileName(Source)
+                Filter = Path.GetFileName(Source),
+                EnableRaisingEvents = true
             };
 
-            Run(watcher);
+            _fileSystemWatcher.Changed += FileSystemWatcherOnChanged;
         }
 
-        private void Run(FileSystemWatcher watcher)
+        private void FileSystemWatcherOnChanged(object sender, FileSystemEventArgs fileSystemEventArgs)
         {
-            while (true)
+            try
             {
-                try
+                if (Sync(Source, Destiny))
                 {
-                    watcher.WaitForChanged(WatcherChangeTypes.Changed);
-
-                    if (Sync())
-                    {
-                        Execute();
-                    }
+                    Execute();
                 }
+            }
 
-                catch (Exception ex)
-                {
-                    EventLog.WriteEntry(Name, ex.Message, EventLogEntryType.Error);
-                }
+            catch (Exception ex)
+            {
+                EventLog.WriteEntry($"SyncXml.{Name}", ex.Message, EventLogEntryType.Error);
             }
         }
 
@@ -140,17 +153,17 @@ namespace SyncXml
             Process.Start(process);
         }
 
-        private bool Sync()
+        private bool Sync(string source, string destiny)
         {
             Thread.Sleep(250);
 
-            for (var i = 0; IsFileLocked(Source) && i < 100; i++)
+            for (var i = 0; IsFileLocked(source) && i < 100; i++)
             {
                 Thread.Sleep(100);
             }
 
-            var sourceDocument = XDocument.Load(Source);
-            var destinyDocument = XDocument.Load(Destiny);
+            var sourceDocument = XDocument.Load(source);
+            var destinyDocument = XDocument.Load(destiny);
 
             var sourceUsersNode = sourceDocument.XPathSelectElement(XPath);
             var destinyUsersNode = destinyDocument.XPathSelectElement(XPath);
@@ -172,12 +185,17 @@ namespace SyncXml
                 destinyUsersNode.ReplaceWith(new XElement(sourceUsersNode));
             }
 
-            using (var stream = File.Create(Destiny))
+            using (var stream = File.Create(destiny))
             {
                 destinyDocument.Save(stream);
             }
 
             return false;
+        }
+
+        public void Stop()
+        {
+            _fileSystemWatcher.Dispose();
         }
     }
 }
