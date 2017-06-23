@@ -107,7 +107,9 @@ namespace SyncXml
 
         private bool Sync()
         {
-            for (var i = 0; IsFileLocked(_source) && i < 10; i++)
+            Thread.Sleep(250);
+
+            for (var i = 0; IsFileLocked(_source) && i < 100; i++)
             {
                 Thread.Sleep(100);
             }
