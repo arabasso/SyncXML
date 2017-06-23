@@ -1,24 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Configuration;
+using System.IO;
 using System.ServiceProcess;
-using System.Text;
 
 namespace SyncXml
 {
     static class Program
     {
-        /// <summary>
-        /// Ponto de entrada principal para o aplicativo.
-        /// </summary>
         static void Main()
         {
-            ServiceBase[] ServicesToRun;
-            ServicesToRun = new ServiceBase[]
+            //if (!File.Exists(ConfigurationManager.AppSettings["Source"]))
+            //{
+            //    return;
+            //}
+
+            var servicesToRun = new ServiceBase[]
             {
-                new Service1()
+                new Service()
             };
-            ServiceBase.Run(ServicesToRun);
+
+            ServiceBase.Run(servicesToRun);
         }
     }
 }

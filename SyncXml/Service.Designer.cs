@@ -1,6 +1,8 @@
-﻿namespace SyncXml
+﻿using System.Configuration;
+
+namespace SyncXml
 {
-    partial class Service1
+    partial class Service
     {
         /// <summary> 
         /// Variável de designer necessária.
@@ -29,7 +31,8 @@
         private void InitializeComponent()
         {
             components = new System.ComponentModel.Container();
-            this.ServiceName = "Service1";
+
+            this.ServiceName = "SyncXml";
         }
 
         #endregion
