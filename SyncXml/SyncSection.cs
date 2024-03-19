@@ -2,7 +2,6 @@
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
@@ -35,7 +34,7 @@ namespace SyncXml
     public class SynchronizationFile :
         ConfigurationElement
     {
-        private FileSystemWatcher _fileSystemWatcher;
+        private FileSystemChangesWatcher _fileSystemWatcher;
 
         [ConfigurationProperty("name", IsRequired = true)]
         public string Name
@@ -81,7 +80,7 @@ namespace SyncXml
 
         public void Synchronize()
         {
-            EventLog.WriteEntry($"SyncXml.{Name}", $"Synchronizing {Source} and {Destiny}", EventLogEntryType.Information);
+            EventLog.WriteEntry($"SyncXml.{Name}", $"Synchronizing \"{Source}\" and \"{Destiny}\"", EventLogEntryType.Information);
 
             try
             {
@@ -96,17 +95,16 @@ namespace SyncXml
                 EventLog.WriteEntry($"SyncXml.{Name}", ex.Message, EventLogEntryType.Error);
             }
 
-            _fileSystemWatcher = new FileSystemWatcher
-            {
-                Path = Path.GetDirectoryName(Source),
-                Filter = Path.GetFileName(Source),
-                EnableRaisingEvents = true
-            };
+            _fileSystemWatcher = new FileSystemChangesWatcher(Path.GetDirectoryName(Source), Path.GetFileName(Source));
 
+            _fileSystemWatcher.Watch(new FileSystemChangeFile
+            {
+                FullPath = Source
+            });
             _fileSystemWatcher.Changed += FileSystemWatcherOnChanged;
         }
 
-        private void FileSystemWatcherOnChanged(object sender, FileSystemEventArgs fileSystemEventArgs)
+        private void FileSystemWatcherOnChanged(object sender, FileSystemChangeEventArgs<FileSystemChangeFile> e)
         {
             try
             {
@@ -155,13 +153,6 @@ namespace SyncXml
 
         private bool Sync(string source, string destiny)
         {
-            Thread.Sleep(250);
-
-            for (var i = 0; IsFileLocked(source) && i < 100; i++)
-            {
-                Thread.Sleep(100);
-            }
-
             var sourceDocument = XDocument.Load(source);
             var destinyDocument = XDocument.Load(destiny);
 
@@ -189,6 +180,8 @@ namespace SyncXml
             {
                 destinyDocument.Save(stream);
             }
+
+            EventLog.WriteEntry($"SyncXml.{Name}", $"File \"{Destiny}\" was syncronized", EventLogEntryType.Information);
 
             return false;
         }
